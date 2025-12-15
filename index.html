@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>Happy Birthday to Mom</title>
+    <title>Happy Birthday Mom</title>
     <style>
-        /* 1. 字体引入 */
         @import url("https://fontsapi.zeoseven.com/157/main/result.css");
         @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
 
@@ -19,18 +18,21 @@
             touch-action: none;
             user-select: none;
             -webkit-user-select: none;
+            /* 确保页面高度撑满，防止键盘挤压背景 */
+            height: 100vh;
+            width: 100vw;
         }
 
         #canvas-container {
-            width: 100vw;
-            height: 100vh;
-            position: absolute;
+            width: 100%;
+            height: 100%;
+            /* 改为 fixed 确保背景锁死在视口，不受键盘顶起影响 */
+            position: fixed;
             top: 0;
             left: 0;
             z-index: 1;
         }
 
-        /* --- UI 层 --- */
         #ui-layer {
             position: absolute;
             top: 0;
@@ -46,31 +48,33 @@
         }
 
         .title {
-            /* 调整位置：稍微下移一点，离心形更近 */
-            margin-top: 18vh;
+            margin-top: 15vh;
             font-family: 'Great Vibes', cursive;
-            
-            /* 修改字号：显著减小，使其与下方心形宽度视觉匹配 */
-            /* 之前是 min(15vw, 4rem)，现在改为 min(7vw, 2.5rem) */
-            font-size: min(2vw, 2.5rem);
-            
             color: #fff;
-            text-shadow: 0 0 5px #ff99aa, 0 0 15px #ff0055;
+            text-shadow: 0 0 10px #ff99aa, 0 0 30px #ff0055;
             opacity: 1;
             transition: opacity 0.5s ease, transform 0.5s ease;
             animation: float 3s ease-in-out infinite;
             text-align: center;
             white-space: nowrap;
             
-            /* 增加一点字间距，让小字号显得更精致 */
-            letter-spacing: 1px;
+            /* 默认 PC 端字号 */
+            font-size: 3rem; 
+        }
+
+        /* 移动端适配：减小字号以匹配心形宽度 */
+        @media (max-width: 768px) {
+            .title {
+                font-size: 6vw; /* 更加紧凑，匹配手机竖屏宽度 */
+                margin-top: 18vh;
+            }
         }
 
         .hint {
             position: absolute;
             bottom: 40px;
             font-family: "PING FANG SHAO HUA", sans-serif;
-            font-size: 0.9rem; /* 稍微调小提示文字 */
+            font-size: 1rem;
             color: rgba(255, 200, 200, 0.6);
             text-transform: uppercase;
             letter-spacing: 2px;
@@ -84,12 +88,13 @@
 
         @keyframes float {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); } /* 减小浮动幅度 */
+            50% { transform: translateY(-15px); }
         }
 
         /* --- 许愿交互区域 --- */
         #wish-container {
             position: absolute;
+            /* 位于屏幕下方 65% */
             top: 65%;
             left: 50%;
             transform: translate(-50%, 20px);
@@ -175,7 +180,7 @@
     <div id="loader">Loading Magic...</div>
 
     <div id="ui-layer">
-        <!-- 修改后的标题文字 -->
+        <!-- 修改文案 -->
         <div class="title">Happy Birthday to Dear Mom!</div>
         <div class="hint">双指开合散开 / 滚轮控制 <br> 单指滑动旋转</div>
     </div>
@@ -277,7 +282,6 @@
             topLight.position.set(0, 10, 0);
             scene.add(topLight);
 
-            // 烛光点光源
             candleLight = new THREE.PointLight(0xff9900, 0, 10);
             candleLight.position.set(0, CONFIG.flameHeight, 0.5);
             candleLight.castShadow = false;
@@ -300,12 +304,39 @@
             composer.addPass(renderScene);
             composer.addPass(bloomPass);
 
+            // 监听窗口大小变化
             window.addEventListener('resize', onWindowResize);
+            
+            // 绑定交互
             bindInputEvents(container);
+            
+            // 绑定输入框交互（处理键盘弹出/收起）
+            bindKeyboardEvents();
 
             const loader = document.getElementById('loader');
             loader.style.opacity = '0';
             setTimeout(() => loader.remove(), 600);
+        }
+
+        // --- 键盘/输入框 布局修复 ---
+        function bindKeyboardEvents() {
+            const input = document.querySelector('.wish-input');
+            
+            // 当输入框失焦（收起键盘）时
+            input.addEventListener('blur', () => {
+                // 1. 强制滚动回顶部，防止 iOS 页面残留滚动
+                window.scrollTo(0, 0);
+                
+                // 2. 延时重置 Canvas 大小，确保键盘完全收起后视口高度正确
+                setTimeout(() => {
+                    onWindowResize();
+                }, 300);
+            });
+
+            // 聚焦时也确保 Canvas 适应（虽然 Fixed 定位已解决大部分问题）
+            input.addEventListener('focus', () => {
+                // 可选：在这里暂停部分动画或调整视角
+            });
         }
 
         // --- 1. 心形粒子 ---
@@ -404,7 +435,7 @@
             scene.add(candleBody);
         }
 
-        // --- 3. 烛光粒子 ---
+        // --- 3. 烛光粒子系统 ---
         function createCandleSystem() {
             const flameCount = 200;
             const geo = new THREE.BufferGeometry();
@@ -464,7 +495,6 @@
             const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, vertexColors: true });
             confettiSystem = new THREE.InstancedMesh(geometry, material, count);
             const colors = [], dummy = new THREE.Object3D();
-            
             const palette = [0x8B4513, 0xFFB7C5, 0xFFD700, 0xFFFFFF, 0xDC143C];
 
             confettiSystem.userData = { velocities: [], rotations: [], positions: [], active: false };
@@ -472,6 +502,7 @@
                 const colorHex = palette[Math.floor(Math.random() * palette.length)];
                 const color = new THREE.Color(colorHex);
                 colors.push(color.r, color.g, color.b);
+                
                 const isLeft = Math.random() > 0.5;
                 const p = new THREE.Vector3(isLeft ? -10 : 10, -5, 0);
                 const v = new THREE.Vector3((isLeft?1:-1)*(0.1+Math.random()*0.2), 0.2+Math.random()*0.3, (Math.random()-0.5)*0.2);
@@ -487,7 +518,9 @@
             if (state.isWishMade) return;
             state.isWishMade = true;
             document.body.classList.remove('show-wish');
+            // 失焦并触发 restore 逻辑
             document.querySelector('.wish-input').blur();
+            
             if (candleSystem) {
                 candleSystem.material.uniforms.uBlow.value = time;
                 setTimeout(() => { state.candleIntensity = 0; }, 2000);
@@ -583,7 +616,6 @@
             const targetAmbience = THREE.MathUtils.lerp(CONFIG.ambientLightIntensity, CONFIG.dimLightIntensity, state.candleIntensity);
             ambientLight.intensity += (targetAmbience - ambientLight.intensity) * 0.1;
 
-            // --- 烛光动态调整 ---
             if (candleLight) {
                 candleLight.intensity = state.candleIntensity * 2.0 * (0.8 + Math.sin(time * 20) * 0.2); 
             }
