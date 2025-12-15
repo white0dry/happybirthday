@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>Happy Birthday | Make a Wish</title>
+    <style>
+        @import url("https://fontsapi.zeoseven.com/157/main/result.css");
+        @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #1a0505; 
+            font-family: "PING FANG SHAO HUA", sans-serif;
+            font-weight: normal;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .title {
+            margin-top: 15vh;
+            font-family: 'Great Vibes', cursive;
+            font-size: min(15vw, 4rem);
+            color: #fff;
+            text-shadow: 0 0 10px #ff99aa, 0 0 30px #ff0055;
+            opacity: 1;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            animation: float 3s ease-in-out infinite;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 40px;
+            font-family: "PING FANG SHAO HUA", sans-serif;
+            font-size: 1rem;
+            color: rgba(255, 200, 200, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+            width: 100%;
+            transition: opacity 0.5s;
+        }
+
+        body.scattered .title { opacity: 0; transform: scale(1.5); filter: blur(10px); }
+        body.scattered .hint { opacity: 0; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        /* --- 许愿交互区域 --- */
+        #wish-container {
+            position: absolute;
+            /* 修改位置：移到屏幕下方 65% 处，给上方留出空间放蜡烛 */
+            top: 65%;
+            left: 50%;
+            transform: translate(-50%, 20px);
+            width: 80%;
+            max-width: 400px;
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1s ease, transform 1s ease;
+            z-index: 10;
+        }
+
+        body.show-wish #wish-container {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(-50%, 0);
+        }
+
+        .wish-input {
+            background: rgba(60, 10, 20, 0.7);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-bottom: 2px solid rgba(255, 215, 0, 0.6);
+            border-radius: 8px;
+            width: 100%;
+            padding: 15px;
+            font-family: "PING FANG SHAO HUA", sans-serif;
+            font-size: 1.5rem;
+            color: #ffd700;
+            text-align: center;
+            outline: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            text-shadow: 0 0 5px #ffaa33;
+            transition: border-color 0.3s, background 0.3s;
+        }
+        .wish-input::placeholder { 
+            color: rgba(255, 255, 255, 0.4); 
+            font-size: 1.2rem; 
+            font-family: "PING FANG SHAO HUA", sans-serif;
+        }
+        .wish-input:focus { 
+            border-bottom-color: #ffd700; 
+            background: rgba(80, 20, 30, 0.85);
+        }
+
+        .wish-btn {
+            margin-top: 25px;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 100, 100, 0.2));
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            color: #ffecd2;
+            padding: 12px 40px;
+            font-family: "PING FANG SHAO HUA", sans-serif;
+            font-size: 1.2rem;
+            cursor: pointer;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+            letter-spacing: 2px;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
+        }
+        .wish-btn:hover {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.4), rgba(255, 100, 100, 0.4));
+            color: #fff;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+            transform: scale(1.05);
+        }
+
+        #loader {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #1a0505;
+            z-index: 999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #ffb7c5;
+            font-family: 'Great Vibes', cursive;
+            font-size: 2rem;
+            transition: opacity 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loader">Loading Magic...</div>
+
+    <div id="ui-layer">
+        <div class="title">Happy Birthday to Mom!</div>
+        <div class="hint">双指开合散开 / 滚轮控制 <br> 单指滑动旋转</div>
+    </div>
+
+    <!-- 许愿框 -->
+    <div id="wish-container">
+        <input type="text" class="wish-input" placeholder="写下你的愿望..." maxlength="30">
+        <br>
+        <button class="wish-btn" onclick="makeWish()">吹灭蜡烛</button>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        window.makeWish = makeWish; 
+
+        // --- 配置 ---
+        const CONFIG = {
+            particleCount: 4000, 
+            colors: [0xFF99AC, 0xFFD1DC, 0xFF0033, 0xFFD700, 0xFFFFFF], 
+            bloomStrength: 1.8,
+            bloomRadius: 0.6,
+            bloomThreshold: 0.15,
+            heartScale: 0.18,
+            scatterRadius: 15.0,
+            ambientLightIntensity: 1.5,
+            dimLightIntensity: 0.2, // 许愿时环境变暗程度
+            // 蜡烛位置定义 (Y轴)
+            flameHeight: 1.2, 
+            candleHeight: 3.5
+        };
+
+        let scene, camera, renderer, composer;
+        let particlesRef = [];
+        let candleSystem, confettiSystem, candleBody; 
+        let ambientLight, candleLight; // candleLight 是新增的火光光源
+        let time = 0;
+
+        const state = {
+            progress: 0, 
+            targetProgress: 0,
+            rotX: 0,
+            rotY: 0,
+            targetRotX: 0,
+            targetRotY: 0,
+            isWishMade: false,
+            candleIntensity: 0 
+        };
+
+        let isDragging = false;
+        let startX = 0, startY = 0;
+        let startDist = 0;
+
+        init();
+        animate();
+
+        function init() {
+            const container = document.getElementById('canvas-container');
+
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x1a0505, 0.02);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 0, 16);
+
+            renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            container.appendChild(renderer.domElement);
+
+            // --- 灯光 ---
+            ambientLight = new THREE.AmbientLight(0xffeebb, CONFIG.ambientLightIntensity);
+            scene.add(ambientLight);
+
+            const mainLight = new THREE.PointLight(0xffaa33, 3, 50);
+            mainLight.position.set(5, 5, 8);
+            scene.add(mainLight);
+
+            const fillLight = new THREE.PointLight(0xff5588, 4, 40);
+            fillLight.position.set(-6, -4, 5);
+            scene.add(fillLight);
+
+            const topLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            topLight.position.set(0, 10, 0);
+            scene.add(topLight);
+
+            // 新增：模拟烛光点光源，位置在火焰处
+            candleLight = new THREE.PointLight(0xff9900, 0, 10); // 初始强度0
+            candleLight.position.set(0, CONFIG.flameHeight, 0.5);
+            candleLight.castShadow = false;
+            scene.add(candleLight);
+
+            // --- 创建物体 ---
+            createHeartParticles();
+            createCandleBody();   
+            createCandleSystem(); 
+            createConfettiSystem();
+
+            // Bloom
+            const renderScene = new RenderPass(scene, camera);
+            const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+            bloomPass.threshold = CONFIG.bloomThreshold;
+            bloomPass.strength = CONFIG.bloomStrength;
+            bloomPass.radius = CONFIG.bloomRadius;
+
+            composer = new EffectComposer(renderer);
+            composer.addPass(renderScene);
+            composer.addPass(bloomPass);
+
+            window.addEventListener('resize', onWindowResize);
+            bindInputEvents(container);
+
+            const loader = document.getElementById('loader');
+            loader.style.opacity = '0';
+            setTimeout(() => loader.remove(), 600);
+        }
+
+        // --- 1. 心形粒子 ---
+        function createHeartParticles() {
+            const geometries = [
+                new THREE.SphereGeometry(0.12, 6, 6),
+                new THREE.BoxGeometry(0.15, 0.15, 0.15),
+                new THREE.IcosahedronGeometry(0.14, 0)
+            ];
+
+            const material = new THREE.MeshStandardMaterial({
+                roughness: 0.3, metalness: 0.6, flatShading: true, side: THREE.DoubleSide
+            });
+
+            material.onBeforeCompile = (shader) => {
+                shader.uniforms.uProgress = { value: 0 };
+                shader.uniforms.uTime = { value: 0 };
+                material.userData.shader = shader;
+
+                shader.vertexShader = shader.vertexShader.replace('#include <common>', `
+                    #include <common>
+                    attribute vec3 aOffsetClosed; attribute vec3 aOffsetOpen; attribute vec3 aRandomRot;
+                    attribute float aScale; attribute vec3 aColor;
+                    varying vec3 vColor; uniform float uProgress; uniform float uTime;
+                    mat4 getRotationMatrix(vec3 axis, float angle) {
+                        axis = normalize(axis); float s = sin(angle); float c = cos(angle); float oc = 1.0 - c;
+                        return mat4(oc * axis.x * axis.x + c, oc * axis.x * axis.y - axis.z * s, oc * axis.z * axis.x + axis.y * s, 0.0,
+                                    oc * axis.x * axis.y + axis.z * s, oc * axis.y * axis.y + c, oc * axis.y * axis.z - axis.x * s, 0.0,
+                                    oc * axis.z * axis.x - axis.y * s, oc * axis.y * axis.z + axis.x * s, oc * axis.z * axis.z + c, 0.0,
+                                    0.0, 0.0, 0.0, 1.0);
+                    }
+                    float cubicBezier(float t) { return t * t * (3.0 - 2.0 * t); }
+                `);
+                shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', `
+                    vec3 transformed = vec3(position);
+                    float t = cubicBezier(uProgress);
+                    vec3 targetPos = mix(aOffsetClosed, aOffsetOpen, t);
+                    float noiseAmp = mix(0.1, 1.0, t);
+                    float floatNoise = sin(uTime * 2.0 + targetPos.x + targetPos.y) * 0.1 * noiseAmp;
+                    targetPos.y += floatNoise;
+                    float rotAngle = uTime * length(aRandomRot) * (1.0 + t * 2.0);
+                    mat4 rotMat = getRotationMatrix(normalize(aRandomRot + vec3(0.1)), rotAngle);
+                    transformed *= aScale; transformed = (rotMat * vec4(transformed, 1.0)).xyz; transformed += targetPos;
+                    vColor = aColor;
+                `);
+                shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>\nvarying vec3 vColor;`);
+                shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>\ndiffuseColor.rgb = vColor * diffuseColor.rgb * 1.2;`);
+            };
+
+            const countPerGeo = Math.floor(CONFIG.particleCount / geometries.length);
+            geometries.forEach((geo) => {
+                const mesh = new THREE.InstancedMesh(geo, material, countPerGeo);
+                mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+                const offsetClosed = [], offsetOpen = [], colors = [], scales = [], randomRots = [], dummy = new THREE.Object3D();
+                for (let i = 0; i < countPerGeo; i++) {
+                    const color = new THREE.Color(CONFIG.colors[Math.floor(Math.random() * CONFIG.colors.length)]);
+                    colors.push(color.r, color.g, color.b);
+                    const u = Math.random() * Math.PI * 2, v = Math.random() * Math.PI, r = Math.pow(Math.random(), 1/3);
+                    const scale = CONFIG.heartScale * r;
+                    let hx = 16 * Math.pow(Math.sin(u), 3) * Math.sin(v);
+                    let hy = (13 * Math.cos(u) - 5 * Math.cos(2*u) - 2 * Math.cos(3*u) - Math.cos(4*u)) * Math.sin(v);
+                    let hz = 6 * Math.cos(v);
+                    offsetClosed.push(hx * scale, hy * scale + 1.0, hz * scale);
+                    const theta = Math.random() * Math.PI * 2, phi = Math.acos(2 * Math.random() - 1);
+                    const sr = CONFIG.scatterRadius * Math.pow(Math.random(), 0.5);
+                    offsetOpen.push(sr * Math.sin(phi) * Math.cos(theta), sr * Math.sin(phi) * Math.sin(theta), sr * Math.cos(phi));
+                    scales.push(0.5 + Math.random() * 0.8);
+                    randomRots.push(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5);
+                    dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix);
+                }
+                mesh.geometry.setAttribute('aOffsetClosed', new THREE.InstancedBufferAttribute(new Float32Array(offsetClosed), 3));
+                mesh.geometry.setAttribute('aOffsetOpen', new THREE.InstancedBufferAttribute(new Float32Array(offsetOpen), 3));
+                mesh.geometry.setAttribute('aColor', new THREE.InstancedBufferAttribute(new Float32Array(colors), 3));
+                mesh.geometry.setAttribute('aScale', new THREE.InstancedBufferAttribute(new Float32Array(scales), 1));
+                mesh.geometry.setAttribute('aRandomRot', new THREE.InstancedBufferAttribute(new Float32Array(randomRots), 3));
+                mesh.frustumCulled = false;
+                scene.add(mesh);
+                particlesRef.push(mesh);
+            });
+        }
+
+        // --- 2. 实体蜡烛 ---
+        function createCandleBody() {
+            const geometry = new THREE.CylinderGeometry(0.3, 0.3, CONFIG.candleHeight, 32);
+            // 修改材质：增加 emissive 自发光，使其看起来有柔和白光
+            const material = new THREE.MeshStandardMaterial({
+                color: 0xfff5e1, 
+                roughness: 0.3,
+                metalness: 0.1,
+                emissive: 0xffeecc, // 暖白自发光
+                emissiveIntensity: 0.2,
+                transparent: true,
+                opacity: 0
+            });
+            
+            candleBody = new THREE.Mesh(geometry, material);
+            // 计算位置：火焰在 flameHeight (1.2)，蜡烛顶部应接近 1.2
+            // 蜡烛中心 Y = 顶部 Y - 高度/2 = 1.2 - 1.75 = -0.55
+            candleBody.position.set(0, CONFIG.flameHeight - CONFIG.candleHeight/2 - 0.1, 0); 
+            scene.add(candleBody);
+        }
+
+        // --- 3. 烛光粒子系统 ---
+        function createCandleSystem() {
+            const flameCount = 200;
+            const geo = new THREE.BufferGeometry();
+            const pos = [], life = [], offset = [];
+            for(let i=0; i<flameCount; i++) {
+                // 修改火焰位置：提升至视觉中心上方
+                pos.push(0, CONFIG.flameHeight, 0); 
+                life.push(Math.random());
+                offset.push((Math.random()-0.5)*0.5, Math.random(), (Math.random()-0.5)*0.5);
+            }
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+            geo.setAttribute('aLife', new THREE.Float32BufferAttribute(life, 1));
+            geo.setAttribute('aOffset', new THREE.Float32BufferAttribute(offset, 3));
+            const mat = new THREE.ShaderMaterial({
+                uniforms: { uTime: { value: 0 }, uIntensity: { value: 0 }, uBlow: { value: 0 } },
+                transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+                vertexShader: `
+                    uniform float uTime; uniform float uBlow; attribute float aLife; attribute vec3 aOffset;
+                    varying float vAlpha; varying float vLife;
+                    void main() {
+                        float loopTime = mod(uTime * 1.5 + aLife, 1.0); vLife = loopTime;
+                        vec3 newPos = position;
+                        if (uBlow < 0.5) {
+                            newPos.y += loopTime * 2.5; 
+                            float wiggle = sin(uTime * 5.0 + newPos.y * 2.0) * 0.1 * loopTime;
+                            newPos.x += aOffset.x * (1.0 - loopTime) + wiggle; newPos.z += aOffset.z * (1.0 - loopTime);
+                        } else {
+                            float blowTime = (uTime - uBlow) * 2.0;
+                            newPos.y += loopTime * 5.0 + blowTime; newPos.x += aOffset.x * 5.0 + sin(uTime * 3.0)*0.5; newPos.z += aOffset.z * 5.0;
+                        }
+                        vec4 mvPosition = modelViewMatrix * vec4(newPos, 1.0);
+                        gl_PointSize = (1.0 - loopTime) * 80.0 * (1.0 / -mvPosition.z);
+                        gl_Position = projectionMatrix * mvPosition;
+                        vAlpha = (1.0 - loopTime);
+                    }
+                `,
+                fragmentShader: `
+                    uniform float uIntensity; uniform float uBlow; varying float vAlpha; varying float vLife;
+                    void main() {
+                        vec2 uv = gl_PointCoord - 0.5; if (length(uv) > 0.5) discard;
+                        vec3 colorCore = vec3(1.0, 0.9, 0.2); vec3 colorEdge = vec3(1.0, 0.2, 0.0); vec3 colorSmoke = vec3(0.5, 0.5, 0.5);
+                        vec3 finalColor = mix(colorCore, colorEdge, vLife);
+                        if (uBlow > 0.5) finalColor = colorSmoke;
+                        float strength = pow(1.0 - (length(uv) * 2.0), 1.5);
+                        gl_FragColor = vec4(finalColor, strength * vAlpha * uIntensity);
+                    }
+                `
+            });
+            candleSystem = new THREE.Points(geo, mat);
+            candleSystem.visible = false;
+            scene.add(candleSystem);
+        }
+
+        // --- 4. 彩带系统 (配色修改) ---
+        function createConfettiSystem() {
+            const count = 300;
+            const geometry = new THREE.PlaneGeometry(0.1, 0.3);
+            const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, vertexColors: true });
+            confettiSystem = new THREE.InstancedMesh(geometry, material, count);
+            const colors = [], dummy = new THREE.Object3D();
+            
+            // 配色修改：咖啡色、粉色、金色、白色、红色
+            const palette = [0x8B4513, 0xFFB7C5, 0xFFD700, 0xFFFFFF, 0xDC143C];
+
+            confettiSystem.userData = { velocities: [], rotations: [], positions: [], active: false };
+            for(let i=0; i<count; i++) {
+                const colorHex = palette[Math.floor(Math.random() * palette.length)];
+                const color = new THREE.Color(colorHex);
+                colors.push(color.r, color.g, color.b);
+                
+                const isLeft = Math.random() > 0.5;
+                const p = new THREE.Vector3(isLeft ? -10 : 10, -5, 0);
+                const v = new THREE.Vector3((isLeft?1:-1)*(0.1+Math.random()*0.2), 0.2+Math.random()*0.3, (Math.random()-0.5)*0.2);
+                confettiSystem.userData.positions.push(p); confettiSystem.userData.velocities.push(v); confettiSystem.userData.rotations.push(new THREE.Vector3(Math.random(), Math.random(), Math.random()));
+                dummy.position.copy(p); dummy.scale.set(0,0,0); dummy.updateMatrix(); confettiSystem.setMatrixAt(i, dummy.matrix);
+            }
+            confettiSystem.geometry.setAttribute('color', new THREE.InstancedBufferAttribute(new Float32Array(colors), 3));
+            confettiSystem.visible = false;
+            scene.add(confettiSystem);
+        }
+
+        function makeWish() {
+            if (state.isWishMade) return;
+            state.isWishMade = true;
+            document.body.classList.remove('show-wish');
+            document.querySelector('.wish-input').blur();
+            if (candleSystem) {
+                candleSystem.material.uniforms.uBlow.value = time;
+                setTimeout(() => { state.candleIntensity = 0; }, 2000);
+            }
+            triggerConfetti();
+        }
+
+        function triggerConfetti() {
+            if (!confettiSystem) return;
+            confettiSystem.visible = true; confettiSystem.userData.active = true;
+            const count = confettiSystem.count;
+            for(let i=0; i<count; i++) {
+                const isLeft = i % 2 === 0;
+                const p = confettiSystem.userData.positions[i];
+                p.set(isLeft ? -8 : 8, -5, (Math.random()-0.5)*5);
+                const v = confettiSystem.userData.velocities[i];
+                v.set((isLeft?1:-1)*(0.2+Math.random()*0.3), 0.4+Math.random()*0.4, (Math.random()-0.5)*0.3);
+            }
+        }
+
+        function updateConfetti() {
+            if (!confettiSystem || !confettiSystem.userData.active) return;
+            const count = confettiSystem.count, dummy = new THREE.Object3D();
+            const { positions, velocities, rotations: rots } = confettiSystem.userData;
+            let activeCount = 0;
+            for(let i=0; i<count; i++) {
+                velocities[i].y -= 0.01; velocities[i].x *= 0.98; positions[i].add(velocities[i]);
+                dummy.position.copy(positions[i]);
+                dummy.rotation.x += rots[i].x * 0.1; dummy.rotation.y += rots[i].y * 0.1; dummy.rotation.z += rots[i].z * 0.1;
+                dummy.updateMatrix(); confettiSystem.setMatrixAt(i, dummy.matrix);
+                if (positions[i].y > -10) activeCount++;
+            }
+            confettiSystem.instanceMatrix.needsUpdate = true;
+            if (activeCount === 0) { confettiSystem.userData.active = false; confettiSystem.visible = false; }
+        }
+
+        function bindInputEvents(dom) {
+            dom.addEventListener('mousedown', (e) => { isDragging = true; startX = e.clientX; startY = e.clientY; });
+            window.addEventListener('mouseup', () => isDragging = false);
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                state.targetRotY += (e.clientX - startX) * 0.005; state.targetRotX += (e.clientY - startY) * 0.005;
+                startX = e.clientX; startY = e.clientY;
+            });
+            dom.addEventListener('wheel', (e) => {
+                state.targetProgress += e.deltaY * 0.001; state.targetProgress = THREE.MathUtils.clamp(state.targetProgress, 0, 1);
+            }, { passive: true });
+            dom.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) { isDragging = true; startX = e.touches[0].pageX; startY = e.touches[0].pageY; }
+                else if (e.touches.length === 2) { isDragging = false; const dx = e.touches[0].pageX - e.touches[1].pageX; const dy = e.touches[0].pageY - e.touches[1].pageY; startDist = Math.sqrt(dx*dx+dy*dy); }
+            }, { passive: false });
+            dom.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1 && isDragging) {
+                    const dx = e.touches[0].pageX - startX; const dy = e.touches[0].pageY - startY;
+                    state.targetRotY += dx * 0.008; state.targetRotX += dy * 0.008; startX = e.touches[0].pageX; startY = e.touches[0].pageY;
+                } else if (e.touches.length === 2) {
+                    const dx = e.touches[0].pageX - e.touches[1].pageX; const dy = e.touches[0].pageY - e.touches[1].pageY; const currDist = Math.sqrt(dx*dx+dy*dy);
+                    const delta = currDist - startDist; startDist = currDist;
+                    state.targetProgress += delta * 0.004; state.targetProgress = THREE.MathUtils.clamp(state.targetProgress, 0, 1);
+                }
+            }, { passive: false });
+            dom.addEventListener('touchend', () => isDragging = false);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.015;
+
+            state.progress += (state.targetProgress - state.progress) * 0.08;
+            state.rotX += (state.targetRotX - state.rotX) * 0.1;
+            state.rotY += (state.targetRotY - state.rotY) * 0.1;
+
+            const body = document.body;
+            if (state.progress > 0.2) body.classList.add('scattered');
+            else body.classList.remove('scattered');
+
+            // 许愿逻辑
+            if (state.progress > 0.95 && !state.isWishMade) {
+                body.classList.add('show-wish');
+                state.candleIntensity += 0.05;
+            } else {
+                body.classList.remove('show-wish');
+                if (!state.isWishMade) state.candleIntensity -= 0.05;
+            }
+            state.candleIntensity = THREE.MathUtils.clamp(state.candleIntensity, 0, 1);
+
+            // --- 环境光动态调整 (暗调) ---
+            const targetAmbience = THREE.MathUtils.lerp(CONFIG.ambientLightIntensity, CONFIG.dimLightIntensity, state.candleIntensity);
+            ambientLight.intensity += (targetAmbience - ambientLight.intensity) * 0.1;
+
+            // --- 烛光动态调整 ---
+            // 火焰灯光强度随火焰大小闪烁
+            if (candleLight) {
+                candleLight.intensity = state.candleIntensity * 2.0 * (0.8 + Math.sin(time * 20) * 0.2); 
+            }
+
+            particlesRef.forEach(mesh => {
+                if (mesh.material.userData.shader) {
+                    mesh.material.userData.shader.uniforms.uProgress.value = state.progress;
+                    mesh.material.userData.shader.uniforms.uTime.value = time;
+                }
+                const autoRot = (1.0 - state.progress) * time * 0.2;
+                mesh.rotation.x = state.rotX; mesh.rotation.y = state.rotY + autoRot;
+            });
+
+            if (candleBody) {
+                candleBody.material.opacity = state.candleIntensity;
+                candleBody.visible = state.candleIntensity > 0.01;
+            }
+
+            if (candleSystem) {
+                candleSystem.material.uniforms.uTime.value = time;
+                candleSystem.material.uniforms.uIntensity.value = state.candleIntensity;
+                candleSystem.visible = state.candleIntensity > 0.01;
+            }
+
+            updateConfetti();
+            composer.render();
+        }
+    </script>
+</body>
+</html>
