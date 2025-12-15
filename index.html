@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>Happy Birthday | Make a Wish</title>
+    <title>Happy Birthday to Mom</title>
     <style>
+        /* 1. 字体引入 */
         @import url("https://fontsapi.zeoseven.com/157/main/result.css");
         @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
 
@@ -29,6 +30,7 @@
             z-index: 1;
         }
 
+        /* --- UI 层 --- */
         #ui-layer {
             position: absolute;
             top: 0;
@@ -44,23 +46,31 @@
         }
 
         .title {
-            margin-top: 15vh;
+            /* 调整位置：稍微下移一点，离心形更近 */
+            margin-top: 18vh;
             font-family: 'Great Vibes', cursive;
-            font-size: min(15vw, 4rem);
+            
+            /* 修改字号：显著减小，使其与下方心形宽度视觉匹配 */
+            /* 之前是 min(15vw, 4rem)，现在改为 min(7vw, 2.5rem) */
+            font-size: min(2vw, 2.5rem);
+            
             color: #fff;
-            text-shadow: 0 0 10px #ff99aa, 0 0 30px #ff0055;
+            text-shadow: 0 0 5px #ff99aa, 0 0 15px #ff0055;
             opacity: 1;
             transition: opacity 0.5s ease, transform 0.5s ease;
             animation: float 3s ease-in-out infinite;
             text-align: center;
             white-space: nowrap;
+            
+            /* 增加一点字间距，让小字号显得更精致 */
+            letter-spacing: 1px;
         }
 
         .hint {
             position: absolute;
             bottom: 40px;
             font-family: "PING FANG SHAO HUA", sans-serif;
-            font-size: 1rem;
+            font-size: 0.9rem; /* 稍微调小提示文字 */
             color: rgba(255, 200, 200, 0.6);
             text-transform: uppercase;
             letter-spacing: 2px;
@@ -74,13 +84,12 @@
 
         @keyframes float {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-15px); }
+            50% { transform: translateY(-10px); } /* 减小浮动幅度 */
         }
 
         /* --- 许愿交互区域 --- */
         #wish-container {
             position: absolute;
-            /* 修改位置：移到屏幕下方 65% 处，给上方留出空间放蜡烛 */
             top: 65%;
             left: 50%;
             transform: translate(-50%, 20px);
@@ -166,7 +175,8 @@
     <div id="loader">Loading Magic...</div>
 
     <div id="ui-layer">
-        <div class="title">Happy Birthday to Mom!</div>
+        <!-- 修改后的标题文字 -->
+        <div class="title">Happy Birthday to Dear Mom!</div>
         <div class="hint">双指开合散开 / 滚轮控制 <br> 单指滑动旋转</div>
     </div>
 
@@ -206,8 +216,7 @@
             heartScale: 0.18,
             scatterRadius: 15.0,
             ambientLightIntensity: 1.5,
-            dimLightIntensity: 0.2, // 许愿时环境变暗程度
-            // 蜡烛位置定义 (Y轴)
+            dimLightIntensity: 0.2, 
             flameHeight: 1.2, 
             candleHeight: 3.5
         };
@@ -215,7 +224,7 @@
         let scene, camera, renderer, composer;
         let particlesRef = [];
         let candleSystem, confettiSystem, candleBody; 
-        let ambientLight, candleLight; // candleLight 是新增的火光光源
+        let ambientLight, candleLight;
         let time = 0;
 
         const state = {
@@ -268,8 +277,8 @@
             topLight.position.set(0, 10, 0);
             scene.add(topLight);
 
-            // 新增：模拟烛光点光源，位置在火焰处
-            candleLight = new THREE.PointLight(0xff9900, 0, 10); // 初始强度0
+            // 烛光点光源
+            candleLight = new THREE.PointLight(0xff9900, 0, 10);
             candleLight.position.set(0, CONFIG.flameHeight, 0.5);
             candleLight.castShadow = false;
             scene.add(candleLight);
@@ -381,31 +390,26 @@
         // --- 2. 实体蜡烛 ---
         function createCandleBody() {
             const geometry = new THREE.CylinderGeometry(0.3, 0.3, CONFIG.candleHeight, 32);
-            // 修改材质：增加 emissive 自发光，使其看起来有柔和白光
             const material = new THREE.MeshStandardMaterial({
                 color: 0xfff5e1, 
                 roughness: 0.3,
                 metalness: 0.1,
-                emissive: 0xffeecc, // 暖白自发光
+                emissive: 0xffeecc, 
                 emissiveIntensity: 0.2,
                 transparent: true,
                 opacity: 0
             });
-            
             candleBody = new THREE.Mesh(geometry, material);
-            // 计算位置：火焰在 flameHeight (1.2)，蜡烛顶部应接近 1.2
-            // 蜡烛中心 Y = 顶部 Y - 高度/2 = 1.2 - 1.75 = -0.55
             candleBody.position.set(0, CONFIG.flameHeight - CONFIG.candleHeight/2 - 0.1, 0); 
             scene.add(candleBody);
         }
 
-        // --- 3. 烛光粒子系统 ---
+        // --- 3. 烛光粒子 ---
         function createCandleSystem() {
             const flameCount = 200;
             const geo = new THREE.BufferGeometry();
             const pos = [], life = [], offset = [];
             for(let i=0; i<flameCount; i++) {
-                // 修改火焰位置：提升至视觉中心上方
                 pos.push(0, CONFIG.flameHeight, 0); 
                 life.push(Math.random());
                 offset.push((Math.random()-0.5)*0.5, Math.random(), (Math.random()-0.5)*0.5);
@@ -453,7 +457,7 @@
             scene.add(candleSystem);
         }
 
-        // --- 4. 彩带系统 (配色修改) ---
+        // --- 4. 彩带系统 ---
         function createConfettiSystem() {
             const count = 300;
             const geometry = new THREE.PlaneGeometry(0.1, 0.3);
@@ -461,7 +465,6 @@
             confettiSystem = new THREE.InstancedMesh(geometry, material, count);
             const colors = [], dummy = new THREE.Object3D();
             
-            // 配色修改：咖啡色、粉色、金色、白色、红色
             const palette = [0x8B4513, 0xFFB7C5, 0xFFD700, 0xFFFFFF, 0xDC143C];
 
             confettiSystem.userData = { velocities: [], rotations: [], positions: [], active: false };
@@ -469,7 +472,6 @@
                 const colorHex = palette[Math.floor(Math.random() * palette.length)];
                 const color = new THREE.Color(colorHex);
                 colors.push(color.r, color.g, color.b);
-                
                 const isLeft = Math.random() > 0.5;
                 const p = new THREE.Vector3(isLeft ? -10 : 10, -5, 0);
                 const v = new THREE.Vector3((isLeft?1:-1)*(0.1+Math.random()*0.2), 0.2+Math.random()*0.3, (Math.random()-0.5)*0.2);
@@ -582,7 +584,6 @@
             ambientLight.intensity += (targetAmbience - ambientLight.intensity) * 0.1;
 
             // --- 烛光动态调整 ---
-            // 火焰灯光强度随火焰大小闪烁
             if (candleLight) {
                 candleLight.intensity = state.candleIntensity * 2.0 * (0.8 + Math.sin(time * 20) * 0.2); 
             }
